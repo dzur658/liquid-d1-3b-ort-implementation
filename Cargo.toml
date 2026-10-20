@@ -1,0 +1,19 @@
+[package]
+name = "d1-onnx-testing"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+hf-hub = {version = "1.0.0", features = ["blocking"]}
+ort = { version = "2.0.0-rc.15", features = ["cuda"] }
+tokenizers = "0.23.2"
+
+# patch essax-rs upstream of tokenizers to fix static_crt() build bug on Windows
+[patch.crates-io]
+esaxx-rs = { git = "https://github.com/dzur658/esaxx-rs", branch = "main" }
+
+[features]
+cuda = ["ort/cuda"]
+directml = ["ort/directml"]
+coreml = ["ort/coreml"]
