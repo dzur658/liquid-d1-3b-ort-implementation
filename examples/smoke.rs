@@ -1,5 +1,5 @@
 use anyhow::Result;
-use d1_onnx_testing::D1;
+use d1_yesno::D1;
 
 fn main() -> Result<()> {
     let mut d1 = D1::new()?;

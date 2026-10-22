@@ -1,5 +1,5 @@
 [package]
-name = "d1-onnx-testing"
+name = "d1-yesno"
 version = "0.1.0"
 edition = "2024"
 
