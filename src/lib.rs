@@ -114,8 +114,8 @@ impl D1 {
                 "loading tokenizer from {}", model_paths.tokenizer.display()
             ))?;
 
-        let mut yes_ids = single_token_ids(&tok, &["yes", "Yes", "YES"], "yes")?;
-        let mut no_ids = single_token_ids(&tok, &["no", "No", "NO"], "no")?;
+        let yes_ids = single_token_ids(&tok, &["yes", "Yes", "YES"], "yes")?;
+        let no_ids = single_token_ids(&tok, &["no", "No", "NO"], "no")?;
 
         Ok(Self {
             tok,
