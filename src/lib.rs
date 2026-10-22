@@ -65,6 +65,10 @@ fn make_session(env: &ort::environment::Environment, model: &PathBuf) -> ort::Re
         .with_execution_providers([
             #[cfg(feature = "cuda")]
             ep::CUDA::default().build(),
+            #[cfg(feature = "directml")]
+            ep::DirectML::default().build(),
+            #[cfg(feature = "coreml")]
+            ep::CoreML::default().build(),
             ep::CPU::default().build(),
         ])?
         .with_optimization_level(GraphOptimizationLevel::Level3)?
