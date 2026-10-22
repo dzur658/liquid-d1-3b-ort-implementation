@@ -73,6 +73,27 @@ fn make_session(env: &ort::environment::Environment, model: &PathBuf) -> ort::Re
     Ok(session)
 }
 
+fn tok_err(e: Box<dyn std::error::Error + Send + Sync>) -> anyhow::Error {
+    anyhow::Error::from_boxed(e)
+}
+
+fn single_token_ids(tok: &Tokenizer, forms: &[&str], label: &str) -> Result<Vec<i64>> {
+    let mut ids = Vec::new();
+    for w in forms {
+        let enc = tok
+            .encode(*w, false)
+            .map_err(tok_err)
+            .with_context(|| format!("tokenizing {label} form {w:?}"))?;
+        if enc.get_ids().len() == 1 {
+            ids.push(enc.get_ids()[0] as i64);
+        }
+    }
+    if ids.is_empty() {
+        bail!("{label}: none of {forms:?} tokenize to a single token — wrong tokenizer/model pairing?");
+    }
+    Ok(ids)
+}
+
 pub struct D1 {
     tok: Tokenizer,
     embed: Session,
@@ -85,23 +106,16 @@ pub struct D1 {
 impl D1 {
     pub fn new() -> Result<Self> {
         let model_paths = fetch_weights()?;
-        let tok = Tokenizer::from_file(model_paths.tokenizer).unwrap();
         let env = fetch_env()?;
 
-        let mut yes_ids = Vec::new();
-        let mut no_ids = Vec::new();
-        for (forms, out) in [(
-            ["yes", "Yes", "YES"],
-            &mut yes_ids,
-        ), (["no", "No", "NO"], &mut no_ids)] {
-            for w in forms {
-                let enc = tok.encode(&*w, false).unwrap();
-                if enc.get_ids().len() == 1 {
-                    out.push(enc.get_ids()[0] as i64);
-                }
-            }
-        }
-        if yes_ids.is_empty() || no_ids.is_empty() { bail!("no single-token yes/no forms"); }
+        let tok = Tokenizer::from_file(&model_paths.tokenizer)
+            .map_err(tok_err)
+            .with_context(|| format!(
+                "loading tokenizer from {}", model_paths.tokenizer.display()
+            ))?;
+
+        let mut yes_ids = single_token_ids(&tok, &["yes", "Yes", "YES"], "yes")?;
+        let mut no_ids = single_token_ids(&tok, &["no", "No", "NO"], "no")?;
 
         Ok(Self {
             tok,
@@ -121,8 +135,11 @@ impl D1 {
     }
 
     pub fn yes_no(&mut self, state: &str, instructions: &str) -> Result<f32> {
-        let enc = self.tok.encode(Self::prompt(state, instructions), false)
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let prompt = Self::prompt(state, instructions);
+
+        let enc = self.tok.encode(&*prompt, false)
+            .map_err(tok_err)
+            .with_context(|| format!("encoding prompt ({} chars)", prompt.len()))?;
         let seq = enc.get_ids().len() as i64;
         let ids: Vec<i64> = enc.get_ids().iter().map(|&i| i as i64).collect();
 
